@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Filters\v1\TicketFilter;
+use App\Http\Requests\Api\v1\ReplaceTicketRequest;
 use App\Http\Requests\Api\v1\StoreTicketRequest;
 use App\Http\Requests\Api\v1\UpdateTicketRequest;
 use App\Http\Resources\v1\TicketResource;
@@ -19,6 +20,7 @@ class TicketController extends ApiController
     {
         return TicketResource::collection(Ticket::filter($filters)->paginate());
     }
+
     /**
      * Store a newly created resource in storage.
      */
@@ -26,8 +28,7 @@ class TicketController extends ApiController
     {
         try {
             $user = User::findOrFail($request->input('data.relationships.author.data.id'));
-        } catch(ModelNotFoundException $exception)
-        {
+        } catch (ModelNotFoundException $exception) {
             return $this->ok('Author does not exist', [
                 'error' => 'The provided user id does not exist'
             ]);
@@ -54,8 +55,7 @@ class TicketController extends ApiController
             }
 
             return new TicketResource($ticket);
-        } catch(ModelNotFoundException $exception)
-        {
+        } catch (ModelNotFoundException $exception) {
             return $this->error('Ticket cannot be found', 404);
         }
     }
@@ -63,9 +63,28 @@ class TicketController extends ApiController
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateTicketRequest $request, Ticket $ticket)
+    public function update(UpdateTicketRequest $request, $ticket_id)
     {
-        //
+        //PATCH
+    }
+
+    public function replace(ReplaceTicketRequest $request, $ticket_id)
+    {
+        //PUT
+        try {
+            $ticket = Ticket::findOrFail($ticket_id);
+
+            $model = [
+                'title' => $request->input('data.attributes.title'),
+                'description' => $request->input('data.attributes.description'),
+                'status' => $request->input('data.attributes.status'),
+                'user_id' => $request->input('data.relationships.author.data.id')
+            ];
+            $ticket->update($model);
+            return new TicketResource($ticket);
+        } catch (ModelNotFoundException $exception) {
+            return $this->error('Ticket does not exist', 404);
+        }
     }
 
     /**
@@ -76,8 +95,7 @@ class TicketController extends ApiController
         try {
             Ticket::findOrFail($ticket_id)->delete();
             return $this->ok("Ticket successfully deleted");
-        } catch(ModelNotFoundException $exception)
-        {
+        } catch (ModelNotFoundException $exception) {
             return $this->error('Ticket not found', 404);
         }
     }
